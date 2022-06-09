@@ -81,8 +81,8 @@ func sendEmailBySES(message string) error {
 		"送信時刻: " + time.Now().String(),
 	}, "\r\n")
 
-	awsAccessKey := "AKIAQBZGMKAFAZCT6GOT"
-	awsSecretKey := "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"
+	awsAccessKey := "access_key"
+	awsSecretKey := "secret_key"
 	awsSession := session.New(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, ""),
