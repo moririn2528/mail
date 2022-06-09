@@ -6,8 +6,14 @@ import (
 	"io/ioutil"
 	"log"
 	"net/smtp"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ses"
 )
 
 var (
@@ -15,6 +21,8 @@ var (
 	sendTo   string
 	password string
 )
+
+const region = "us-west-2"
 
 func loadConfig() {
 	type A struct {
@@ -62,8 +70,59 @@ func sendEmailBySMTP(message string) error {
 	return nil
 }
 
+func sendEmailBySES(message string) error {
+	sendErr := errors.New("cannot send email")
+
+	from := "testmail@e.torimari.site"
+	to := "strangenoise1@gmail.com"
+	subject := "テスト"
+	data := strings.Join([]string{
+		message,
+		"送信時刻: " + time.Now().String(),
+	}, "\r\n")
+
+	awsAccessKey := "AKIAQBZGMKAFAZCT6GOT"
+	awsSecretKey := "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"
+	awsSession := session.New(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: credentials.NewStaticCredentials(awsAccessKey, awsSecretKey, ""),
+	})
+	client := ses.New(awsSession)
+	input := &ses.SendEmailInput{
+		Destination: &ses.Destination{
+			ToAddresses: []*string{
+				aws.String(to),
+			},
+		},
+		Message: &ses.Message{
+			Body: &ses.Body{
+				Text: &ses.Content{
+					Charset: aws.String("UTF-8"),
+					Data:    aws.String(data),
+				},
+			},
+			Subject: &ses.Content{
+				Charset: aws.String("UTF-8"),
+				Data:    aws.String(subject),
+			},
+		},
+		Source: aws.String(from),
+	}
+	_, err := client.SendEmail(input)
+	if err != nil {
+		log.Println(err)
+		return sendErr
+	}
+	return nil
+}
+
 func sendEmail(message string) error {
-	return sendEmailBySMTP(message)
+	_, local := os.LookupEnv("windir")
+	if local {
+		return sendEmailBySMTP(message)
+	} else {
+		return sendEmailBySES(message)
+	}
 }
 
 func main() {
